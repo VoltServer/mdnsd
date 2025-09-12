@@ -153,7 +153,6 @@ static void setup_iface(struct iface *iface)
 
 		mdnsd_set_address(iface->mdns, iface->inaddr);
 		mdnsd_set_ipv6_address(iface->mdns, iface->in6addr);
-		conf_init(iface, path, hostnm);
 		mdnsd_register_receive_callback(iface->mdns, record_received, NULL);
 	}
 
@@ -167,6 +166,10 @@ static void setup_iface(struct iface *iface)
 
 	mdnsd_set_address(iface->mdns, iface->inaddr);
 	mdnsd_set_ipv6_address(iface->mdns, iface->in6addr);
+
+	records_clear(iface->mdns);
+	conf_init(iface, path, hostnm);
+
 	iface->changed = 0;
 }
 
