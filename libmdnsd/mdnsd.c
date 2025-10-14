@@ -361,7 +361,7 @@ static void _q_done(mdns_daemon_t *d, struct query *q)
 {
 	struct cached *c = 0;
 	struct query *cur;
-	int i = _namehash(q->name) % LPRIME;
+	int i = _namehash(q->name) % SPRIME;
 
 	while ((c = _c_next(d, c, q->name, q->type)))
 		c->q = 0;
