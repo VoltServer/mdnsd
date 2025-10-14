@@ -5,7 +5,7 @@ SUBDIRS            = src
 endif
 
 # This env. variable is only needed for `make distcheck`
-TESTS_ENVIRONMENT  = top_srcdir=$(top_srcdir) unshare -mrun
+TESTS_ENVIRONMENT  = top_srcdir=$(top_srcdir) unshare -mrun --map-auto
 TEST_EXTENSIONS    = .sh
 
 TESTS              = discover.sh
