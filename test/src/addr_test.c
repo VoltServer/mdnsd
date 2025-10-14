@@ -488,6 +488,7 @@ static void test_iface_init_two_ifc_ipv4_ll_global_ipv6_ipv4_ipv6(__attribute__(
 static int teardown(__attribute__((__unused__)) void **state)
 {
 	iface_exit();
+	return 0;
 }
 
 
