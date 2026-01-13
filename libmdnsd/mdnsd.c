@@ -33,6 +33,7 @@
 #include <stdbool.h>
 #include <time.h>
 #include <errno.h>
+#include <ifaddrs.h>
 
 #define SPRIME 109		/* Size of query/publish hashes */
 #define LPRIME 1009		/* Size of cache hash */
@@ -675,6 +676,34 @@ static int _r_out(mdns_daemon_t *d, struct message *m, mdns_record_t **list)
 	return ret;
 }
 
+/* Check if an IPv4 address belongs to this host (any interface) */
+static bool _is_local_ipv4(mdns_daemon_t *d, struct in_addr ip)
+{
+	/* Always consider the primary configured address as local */
+	if (ip.s_addr == d->addr.s_addr)
+		return true;
+
+	struct ifaddrs *ifa = NULL;
+
+	if (getifaddrs(&ifa) != 0)
+		return false;
+
+	for (struct ifaddrs *it = ifa; it; it = it->ifa_next) {
+		if (!it->ifa_addr)
+			continue;
+		if (it->ifa_addr->sa_family != AF_INET)
+			continue;
+
+		struct sockaddr_in *sin = (struct sockaddr_in *)it->ifa_addr;
+		if (sin->sin_addr.s_addr == ip.s_addr) {
+			freeifaddrs(ifa);
+			return true;
+		}
+	}
+
+  freeifaddrs(ifa);
+	return false;
+}
 
 mdns_daemon_t *mdnsd_new(int class, int frame)
 {
@@ -869,6 +898,10 @@ int mdnsd_in(mdns_daemon_t *d, struct message *m, struct in_addr ip, unsigned sh
 
 	gettimeofday(&d->now, 0);
 
+	/* Ignore packets originated from any of our local IPv4 addresses */
+	if (_is_local_ipv4(d, ip))
+		return 0;
+
 	if (m->header.qr == 0) {
 		/* Process each query */
 		for (i = 0; i < m->qdcount; i++) {
@@ -883,7 +916,7 @@ int mdnsd_in(mdns_daemon_t *d, struct message *m, struct in_addr ip, unsigned sh
 			if (!r)
 				continue;
 
-			/* Service enumeratio/discovery prepeare to send all matching records */
+			/* Service enumeration/discovery prepeare to send all matching records */
 			if (!strcmp(m->qd[i].name, DISCO_NAME)) {
 				d->disco = 1;
 				while (r) {
@@ -961,9 +994,6 @@ int mdnsd_in(mdns_daemon_t *d, struct message *m, struct in_addr ip, unsigned sh
 		INFO("Got Answer: Name: %s, Type: %d", m->an[i].name, m->an[i].type);
 		r = _r_next(d, NULL, m->an[i].name, m->an[i].type);
 		if (r && r->unique && r->modified && _a_match(&m->an[i], &r->rr)) {
-			/* double check, is this actually from us, looped back? */
-			if (ip.s_addr == d->addr.s_addr)
-				continue;
 			_conflict(d, r);
 		}
 
